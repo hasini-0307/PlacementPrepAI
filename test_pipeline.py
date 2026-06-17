@@ -1,18 +1,20 @@
 from src.loader import load_pdf
 from src.splitter import split_documents
+from src.vectorstore import create_vectorstore
 
-pdf_path = "uploads/Hasini_Kolasani_Resume.pdf" 
+pdf_path = "uploads/Hasini_Kolasani_Resume.pdf"
 
+# Load PDF
 documents = load_pdf(pdf_path)
 
-print(f"Number of pages: {len(documents)}")
+print(f"Pages: {len(documents)}")
 
+# Split documents
 chunks = split_documents(documents)
 
-print(f"Number of chunks: {len(chunks)}")
+print(f"Chunks: {len(chunks)}")
 
-print("\nFirst Chunk:\n")
-print(chunks[0].page_content)
+# Create vector database
+vectorstore = create_vectorstore(chunks)
 
-print("\nMetadata:\n")
-print(chunks[0].metadata)
+print("\nVector database created successfully!")
