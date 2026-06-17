@@ -31,7 +31,7 @@ while True:
     # Retrieve documents
     docs = retriever.invoke(query)
 
-    # Combine retrieved chunks
+    # Create context
     context = "\n\n".join(doc.page_content for doc in docs)
 
     # Build prompt
@@ -42,11 +42,20 @@ while True:
         }
     )
 
-    # Gemini
+    # Gemini response
     response = llm.invoke(messages)
 
-    # Parse output
+    # Extract answer
     answer = parser.invoke(response)
 
     print("\nAnswer:")
     print(answer)
+
+    # Show source pages
+    pages = sorted(
+        set(doc.metadata["page"] + 1 for doc in docs)
+    )
+
+    print("\nSources:")
+    for page in pages:
+        print(f"Page {page}")
