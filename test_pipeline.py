@@ -1,22 +1,16 @@
 from dotenv import load_dotenv
 
-from src.loader import load_pdf
-from src.splitter import split_documents
-from src.vectorstore import create_vectorstore
+from src.vectorstore import load_vectorstore
 from src.chain import create_chain
+
+from src.vectorstore import load_vectorstore
 
 load_dotenv()
 
 pdf_path = "uploads/Hasini_Kolasani_Resume.pdf"
 
-# Load PDF
-documents = load_pdf(pdf_path)
 
-# Split into chunks
-chunks = split_documents(documents)
-
-# Create vector database
-vectorstore = create_vectorstore(chunks)
+vectorstore = load_vectorstore()
 
 # Create components
 retriever, prompt, llm, parser = create_chain(vectorstore)
