@@ -1,6 +1,7 @@
 import os
 import streamlit as st
 from dotenv import load_dotenv
+from langchain_core.messages import HumanMessage, AIMessage
 
 from src.rag_pipeline import RAGPipeline
 
@@ -109,6 +110,7 @@ Ask questions about your uploaded documents using:
     # Clear chat
     if st.button("🗑 Clear Chat"):
         st.session_state.messages = []
+        pipeline.chat_history.clear()
         st.rerun()
 
     # Reset documents
@@ -162,27 +164,33 @@ if user_input:
 
     # Assistant response
     with st.chat_message("assistant"):
+      
 
-        response, pages = pipeline.ask(user_input)
+      response, pages = pipeline.ask(user_input)
 
-        # Stream response token-by-token
-        answer = st.write_stream(
-            chunk.content
-            for chunk in response
-        )
-
-        # Show sources separately
-        if pages:
-
-            with st.expander("📚 Sources"):
-
-                for page in pages:
-                    st.write(f"Page {page}")
-
-    # Save assistant response
-    st.session_state.messages.append(
-        {
-            "role": "assistant",
-            "content": answer
-        }
+      answer = st.write_stream(
+        chunk.content
+        for chunk in response
     )
+
+      pipeline.chat_history.add_message(
+        HumanMessage(content=user_input)
+    )
+
+      pipeline.chat_history.add_message(
+        AIMessage(content=answer)
+    )
+
+      if pages:
+
+        with st.expander("📚 Sources"):
+
+            for page in pages:
+                st.write(f"Page {page}")
+
+    st.session_state.messages.append(
+    {
+        "role": "assistant",
+        "content": answer
+    }
+)

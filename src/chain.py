@@ -27,6 +27,9 @@ If the answer requires reasoning, derive it from the context and clearly indicat
 
 Only say "I couldn't find that information in the uploaded documents" when the context contains insufficient information to reasonably answer the question.
 
+Conversation History:
+{history}
+
 Context:
 {context}
 

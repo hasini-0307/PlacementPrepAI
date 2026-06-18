@@ -1,5 +1,8 @@
 from src.chain import create_chain
 from src.process_documents import process_documents
+from src.memory import get_chat_history
+from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage
 
 
 class RAGPipeline:
@@ -11,6 +14,7 @@ class RAGPipeline:
         self.prompt = None
         self.llm = None
         self.parser = None
+        self.chat_history = get_chat_history()
 
 
     def load_documents(self, pdf_paths):
@@ -40,8 +44,14 @@ class RAGPipeline:
             for doc in docs
         )
 
+        history = "\n".join(
+         f"{msg.type}: {msg.content}"
+         for msg in self.chat_history.messages
+)
+
         messages = self.prompt.invoke(
             {
+                "history": history,
                 "context": context,
                 "question": question
             }
