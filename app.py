@@ -1,14 +1,23 @@
+import os
 import streamlit as st
 from dotenv import load_dotenv
+
 from src.rag_pipeline import RAGPipeline
 
 # Load environment variables
 load_dotenv()
 
-# Initialize pipeline
-pipeline = RAGPipeline()
+# Initialize pipeline once
+if "pipeline" not in st.session_state:
+    st.session_state.pipeline = RAGPipeline()
 
-# Page configuration
+pipeline = st.session_state.pipeline
+
+# Initialize chat history
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# Page config
 st.set_page_config(
     page_title="PlacementPrep AI",
     page_icon="🤖",
@@ -25,7 +34,7 @@ with st.sidebar:
     st.markdown("""
 ### About
 
-Ask questions about your documents using:
+Ask questions about your uploaded documents using:
 
 - 📄 Semantic Search
 - 🧠 Gemini 2.5 Flash
@@ -35,8 +44,56 @@ Ask questions about your documents using:
 
     st.markdown("---")
 
+    # Upload PDFs
+    uploaded_files = st.file_uploader(
+        "📂 Upload PDF(s)",
+        type=["pdf"],
+        accept_multiple_files=True
+    )
+
+    # Process PDFs
+    if st.button("⚙️ Process PDFs"):
+
+        if uploaded_files:
+
+            with st.spinner("Processing PDFs..."):
+
+                os.makedirs("uploads", exist_ok=True)
+
+                pdf_paths = []
+
+                for file in uploaded_files:
+
+                    save_path = os.path.join(
+                        "uploads",
+                        file.name
+                    )
+
+                    with open(save_path, "wb") as f:
+                        f.write(file.getbuffer())
+
+                    pdf_paths.append(save_path)
+
+                pipeline.load_documents(pdf_paths)
+
+            st.success("Documents processed successfully!")
+
+        else:
+            st.warning("Please upload at least one PDF.")
+
+    st.markdown("---")
+
+    # Clear chat
     if st.button("🗑 Clear Chat"):
         st.session_state.messages = []
+        st.rerun()
+
+    # Reset documents
+    if st.button("🔄 Reset Documents"):
+
+        st.session_state.pipeline = RAGPipeline()
+        st.session_state.messages = []
+
         st.rerun()
 
 # Main title
@@ -45,10 +102,6 @@ st.title("🤖 PlacementPrep AI")
 st.caption(
     "Chat with your documents using RAG + Gemini"
 )
-
-# Initialize chat history
-if "messages" not in st.session_state:
-    st.session_state.messages = []
 
 # Display previous messages
 for message in st.session_state.messages:
@@ -63,6 +116,15 @@ user_input = st.chat_input(
 
 if user_input:
 
+    # Check if PDFs are processed
+    if pipeline.vectorstore is None:
+
+        st.warning(
+            "Please upload and process PDF documents first."
+        )
+
+        st.stop()
+
     # Save user message
     st.session_state.messages.append(
         {
@@ -75,7 +137,7 @@ if user_input:
     with st.chat_message("user"):
         st.markdown(user_input)
 
-    # Generate response
+    # Generate answer
     with st.chat_message("assistant"):
 
         with st.spinner("Thinking..."):

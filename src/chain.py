@@ -1,4 +1,4 @@
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
@@ -9,20 +9,19 @@ def create_chain(vectorstore):
 
     retriever = get_retriever(vectorstore)
 
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash"
+    llm = ChatGroq(
+        model="llama-3.3-70b-versatile"
     )
 
     prompt = ChatPromptTemplate.from_template(
-      """
+        """
 You are a helpful assistant.
 
-Answer only from the provided context.
+Answer ONLY from the provided context.
 
-If the answer is not available in the context,
-say:
+If the answer is not available in the context, say:
 
-"I couldn't find that information in the uploaded document."
+"I couldn't find that information in the uploaded documents."
 
 Context:
 {context}
