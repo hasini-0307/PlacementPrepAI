@@ -160,26 +160,29 @@ if user_input:
     with st.chat_message("user"):
         st.markdown(user_input)
 
-    # Generate answer
+    # Assistant response
     with st.chat_message("assistant"):
 
-        with st.spinner("Thinking..."):
+        response, pages = pipeline.ask(user_input)
 
-            answer, pages = pipeline.ask(user_input)
+        # Stream response token-by-token
+        answer = st.write_stream(
+            chunk.content
+            for chunk in response
+        )
 
-            source_text = "\n\n📚 Sources:\n"
+        # Show sources separately
+        if pages:
 
-            for page in pages:
-                source_text += f"- Page {page}\n"
+            with st.expander("📚 Sources"):
 
-            full_response = answer + source_text
-
-            st.markdown(full_response)
+                for page in pages:
+                    st.write(f"Page {page}")
 
     # Save assistant response
     st.session_state.messages.append(
         {
             "role": "assistant",
-            "content": full_response
+            "content": answer
         }
     )

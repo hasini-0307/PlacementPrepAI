@@ -15,11 +15,9 @@ class RAGPipeline:
 
     def load_documents(self, pdf_paths):
 
-        # Release previous objects
         self.vectorstore = None
         self.retriever = None
 
-        # Build new vectorstore
         self.vectorstore = process_documents(pdf_paths)
 
         self.retriever, self.prompt, self.llm, self.parser = create_chain(
@@ -31,10 +29,9 @@ class RAGPipeline:
 
         if self.vectorstore is None:
 
-            return (
-                "Please upload and process PDF documents first.",
-                []
-            )
+            return iter([
+                "Please upload and process PDF documents first."
+            ]), []
 
         docs = self.retriever.invoke(question)
 
@@ -52,18 +49,13 @@ class RAGPipeline:
 
         try:
 
-            response = self.llm.invoke(messages)
-
-            answer = self.parser.invoke(response)
+            response = self.llm.stream(messages)
 
         except Exception:
 
-            answer = (
-                "⚠️ LLM unavailable or rate limit exceeded.\n\n"
-                "Please try again later."
-            )
-
-            return answer, []
+            return iter([
+                "⚠️ LLM unavailable or rate limit exceeded. Please try again later."
+            ]), []
 
         pages = sorted(
             set(
@@ -72,4 +64,4 @@ class RAGPipeline:
             )
         )
 
-        return answer, pages
+        return response, pages
