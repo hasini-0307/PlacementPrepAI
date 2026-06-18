@@ -28,6 +28,28 @@ st.set_page_config(
 with st.sidebar:
 
     st.title("🤖 PlacementPrep AI")
+    with st.expander("⚙️ Tech Stack"):
+
+     st.markdown("""
+    **LLM**
+    - Groq
+    - Llama 3.3 70B
+
+    **Embeddings**
+    - sentence-transformers/all-MiniLM-L6-v2
+
+    **Vector Database**
+    - ChromaDB (In-Memory)
+
+    **Framework**
+    - LangChain
+
+    **Frontend**
+    - Streamlit
+
+    **Retrieval**
+    - MMR Search
+    """)
 
     st.markdown("---")
 
@@ -37,9 +59,10 @@ with st.sidebar:
 Ask questions about your uploaded documents using:
 
 - 📄 Semantic Search
-- 🧠 Gemini 2.5 Flash
-- 🔍 ChromaDB
+- 🧠 Llama 3.3 70B (Groq)
+- 🔍 In-Memory ChromaDB
 - 🤗 HuggingFace Embeddings
+- 🔎 MMR Retrieval
 """)
 
     st.markdown("---")
@@ -100,7 +123,7 @@ Ask questions about your uploaded documents using:
 st.title("🤖 PlacementPrep AI")
 
 st.caption(
-    "Chat with your documents using RAG + Gemini"
+     "Chat with your documents using RAG + Groq + Llama 3.3 70B"
 )
 
 # Display previous messages
