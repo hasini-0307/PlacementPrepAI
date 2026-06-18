@@ -9,19 +9,23 @@ def create_chain(vectorstore):
 
     retriever = get_retriever(vectorstore)
 
-    llm = ChatGroq(
-        model="llama-3.3-70b-versatile"
-    )
+    from src.llm import get_llm
+
+    llm = get_llm()
 
     prompt = ChatPromptTemplate.from_template(
-        """
-You are a helpful assistant.
+"""
+You are a helpful AI assistant.
 
-Answer ONLY from the provided context.
+Use the provided context to answer questions.
 
-If the answer is not available in the context, say:
+You may infer, summarize, compare, analyze, and generate insights based on the information in the context.
 
-"I couldn't find that information in the uploaded documents."
+If the answer is explicitly present, provide it accurately.
+
+If the answer requires reasoning, derive it from the context and clearly indicate that it is an inference.
+
+Only say "I couldn't find that information in the uploaded documents" when the context contains insufficient information to reasonably answer the question.
 
 Context:
 {context}
@@ -31,7 +35,8 @@ Question:
 
 Answer:
 """
-    )
+)
+
 
     parser = StrOutputParser()
 
