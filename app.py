@@ -1,4 +1,6 @@
+
 import os
+import shutil
 import streamlit as st
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, AIMessage
@@ -29,28 +31,29 @@ st.set_page_config(
 with st.sidebar:
 
     st.title("🤖 PlacementPrep AI")
+
     with st.expander("⚙️ Tech Stack"):
 
-     st.markdown("""
-    **LLM**
-    - Groq
-    - Llama 3.3 70B
+        st.markdown("""
+**LLM**
+- Groq
+- Llama 3.3 70B
 
-    **Embeddings**
-    - sentence-transformers/all-MiniLM-L6-v2
+**Embeddings**
+- sentence-transformers/all-MiniLM-L6-v2
 
-    **Vector Database**
-    - ChromaDB (In-Memory)
+**Vector Database**
+- ChromaDB (In-Memory)
 
-    **Framework**
-    - LangChain
+**Framework**
+- LangChain
 
-    **Frontend**
-    - Streamlit
+**Frontend**
+- Streamlit
 
-    **Retrieval**
-    - MMR Search
-    """)
+**Retrieval**
+- Hybrid Search + MultiQuery
+""")
 
     st.markdown("---")
 
@@ -63,7 +66,8 @@ Ask questions about your uploaded documents using:
 - 🧠 Llama 3.3 70B (Groq)
 - 🔍 In-Memory ChromaDB
 - 🤗 HuggingFace Embeddings
-- 🔎 MMR Retrieval
+- 🔎 MultiQuery Retrieval
+- 🔀 Hybrid Search
 """)
 
     st.markdown("---")
@@ -107,32 +111,53 @@ Ask questions about your uploaded documents using:
 
     st.markdown("---")
 
-    # Clear chat
+    # Clear Chat
     if st.button("🗑 Clear Chat"):
+
         st.session_state.messages = []
+
         pipeline.chat_history.clear()
+
         st.rerun()
 
-    # Reset documents
-    if st.button("🔄 Reset Documents"):
+    # Reset Session
+    if st.button("🔄 Reset Session"):
 
         st.session_state.pipeline = RAGPipeline()
+
         st.session_state.messages = []
 
         st.rerun()
+
+    # Delete Everything
+    if st.button("❌ Delete Everything"):
+
+        st.session_state.pipeline = RAGPipeline()
+
+        st.session_state.messages = []
+
+        if os.path.exists("uploads"):
+            shutil.rmtree("uploads")
+
+        st.success("All documents and chat history deleted.")
+
+        st.rerun()
+
 
 # Main title
 st.title("🤖 PlacementPrep AI")
 
 st.caption(
-     "Chat with your documents using RAG + Groq + Llama 3.3 70B"
+    "Chat with your documents using RAG + Groq + Llama 3.3 70B"
 )
 
 # Display previous messages
 for message in st.session_state.messages:
 
     with st.chat_message(message["role"]):
+
         st.markdown(message["content"])
+
 
 # Chat input
 user_input = st.chat_input(
@@ -141,7 +166,7 @@ user_input = st.chat_input(
 
 if user_input:
 
-    # Check if PDFs are processed
+    # Check if documents are loaded
     if pipeline.vectorstore is None:
 
         st.warning(
@@ -160,37 +185,42 @@ if user_input:
 
     # Display user message
     with st.chat_message("user"):
+
         st.markdown(user_input)
 
     # Assistant response
     with st.chat_message("assistant"):
-      
 
-      response, pages = pipeline.ask(user_input)
+        response, pages = pipeline.ask(user_input)
 
-      answer = st.write_stream(
-        chunk.content
-        for chunk in response
-    )
+        answer = st.write_stream(
+            chunk.content
+            for chunk in response
+        )
 
-      pipeline.chat_history.add_message(
-        HumanMessage(content=user_input)
-    )
+        # Store memory
+        pipeline.chat_history.add_message(
+            HumanMessage(content=user_input)
+        )
 
-      pipeline.chat_history.add_message(
-        AIMessage(content=answer)
-    )
+        pipeline.chat_history.add_message(
+            AIMessage(content=answer)
+        )
 
-      if pages:
+        # Show sources
+        if pages:
 
-        with st.expander("📚 Sources"):
+            with st.expander("📚 Sources"):
 
-            for page in pages:
-                st.write(f"Page {page}")
+                for page in pages:
 
+                    st.write(f"Page {page}")
+
+    # Save assistant response
     st.session_state.messages.append(
-    {
-        "role": "assistant",
-        "content": answer
-    }
-)
+        {
+            "role": "assistant",
+            "content": answer
+        }
+    )
+

@@ -17,4 +17,4 @@ def process_documents(pdf_paths):
 
     vectorstore = create_vectorstore(chunks)
 
-    return vectorstore
+    return vectorstore, chunks

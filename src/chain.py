@@ -5,9 +5,9 @@ from langchain_core.output_parsers import StrOutputParser
 from src.retriever import get_retriever
 
 
-def create_chain(vectorstore):
+def create_chain(vectorstore,chunks):
 
-    retriever = get_retriever(vectorstore)
+    retriever = get_retriever(vectorstore,chunks)
 
     from src.llm import get_llm
 

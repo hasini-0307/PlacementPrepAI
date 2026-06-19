@@ -10,6 +10,7 @@ class RAGPipeline:
     def __init__(self):
 
         self.vectorstore = None
+        self.chunks = None
         self.retriever = None
         self.prompt = None
         self.llm = None
@@ -22,10 +23,10 @@ class RAGPipeline:
         self.vectorstore = None
         self.retriever = None
 
-        self.vectorstore = process_documents(pdf_paths)
-
+        self.vectorstore, self.chunks = process_documents(pdf_paths)
         self.retriever, self.prompt, self.llm, self.parser = create_chain(
-            self.vectorstore
+            self.vectorstore,
+            self.chunks
         )
 
 
@@ -38,11 +39,9 @@ class RAGPipeline:
             ]), []
 
         docs = self.retriever.invoke(question)
+        print("\nRetrieved docs:", len(docs))
 
-        context = "\n\n".join(
-            doc.page_content
-            for doc in docs
-        )
+       
 
         history = "\n".join(
          f"{msg.type}: {msg.content}"
