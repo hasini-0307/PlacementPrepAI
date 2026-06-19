@@ -193,6 +193,47 @@ Ask questions about your uploaded documents using:
 
         st.markdown(report)
 
+        #interviw questions generator
+
+    st.markdown("---")
+
+    st.subheader("🎤 Mock Interview")
+
+    interview_role = st.text_input(
+    "Target Role",
+    placeholder="Amazon SDE / ML Engineer / Google SWE"
+)
+
+    if st.button("🎤 Generate Interview"):
+
+     if pipeline.vectorstore is None:
+
+        st.warning(
+            "Please upload documents first."
+        )
+
+     elif interview_role == "":
+
+        st.warning(
+            "Please enter a role."
+        )
+
+     else:
+
+        with st.spinner(
+            "Generating interview questions..."
+        ):
+
+            report = pipeline.interview_questions(
+                interview_role
+            )
+
+        st.subheader(
+            "🎤 Mock Interview"
+        )
+
+        st.markdown(report)    
+
 
     # Clear Chat
     if st.button("🗑 Clear Chat"):

@@ -6,7 +6,7 @@ from langchain_core.messages import AIMessage
 from src.ats_analyzer import analyze_resume
 from src.skill_gap_analyzer import analyze_skill_gap
 from src.roadmap_generator import generate_roadmap
-
+from src.interview_generator import generate_interview
 
 class RAGPipeline:
 
@@ -76,6 +76,24 @@ class RAGPipeline:
         context,
         goal
     )
+
+
+    def interview_questions(self, role):
+
+     docs = self.retriever.invoke(
+        "Provide complete information about the candidate."
+    )
+
+     context = "\n\n".join(
+        doc.page_content
+        for doc in docs
+    )
+
+     return generate_interview(
+        context,
+        role
+    )
+    
 
 
     def ask(self, question):
