@@ -3,6 +3,9 @@ from src.process_documents import process_documents
 from src.memory import get_chat_history
 from langchain_core.messages import HumanMessage
 from langchain_core.messages import AIMessage
+from src.ats_analyzer import analyze_resume
+from src.skill_gap_analyzer import analyze_skill_gap
+from src.roadmap_generator import generate_roadmap
 
 
 class RAGPipeline:
@@ -29,6 +32,51 @@ class RAGPipeline:
             self.chunks
         )
 
+    def ats_analysis(self):
+     
+    
+
+     docs = self.retriever.invoke(
+        "Provide complete information about the candidate."
+    )
+
+     context = "\n\n".join(
+        doc.page_content
+        for doc in docs
+    )
+
+     return analyze_resume(context)
+    
+    def skill_gap_analysis(self):
+
+     docs = self.retriever.invoke(
+        "Provide complete information about the candidate and job requirements."
+    )
+
+     context = "\n\n".join(
+        doc.page_content
+        for doc in docs
+    )
+
+     return analyze_skill_gap(context)
+    
+
+    def roadmap(self, goal):
+
+     docs = self.retriever.invoke(
+        "Provide complete information about the candidate."
+    )
+
+     context = "\n\n".join(
+        doc.page_content
+        for doc in docs
+    )
+
+     return generate_roadmap(
+        context,
+        goal
+    )
+
 
     def ask(self, question):
 
@@ -41,7 +89,12 @@ class RAGPipeline:
         docs = self.retriever.invoke(question)
         print("\nRetrieved docs:", len(docs))
 
-       
+      
+
+        context = "\n\n".join(
+            doc.page_content
+            for doc in docs
+        )
 
         history = "\n".join(
          f"{msg.type}: {msg.content}"

@@ -111,6 +111,89 @@ Ask questions about your uploaded documents using:
 
     st.markdown("---")
 
+
+    #ats score analyzer
+    if st.button("📊 ATS Analysis"):
+
+     if pipeline.vectorstore is None:
+
+        st.warning(
+            "Please upload documents first."
+        )
+
+     else:
+
+        with st.spinner("Analyzing resume..."):
+
+            report = pipeline.ats_analysis()
+
+        st.subheader("📊 ATS Report")
+
+        st.markdown(report)
+
+
+     # skill gap analyzer 
+    if st.button("🎯 Skill Gap Analysis"):
+
+     if pipeline.vectorstore is None:
+
+        st.warning(
+            "Please upload documents first."
+        )
+
+     else:
+
+        with st.spinner(
+            "Analyzing candidate and job requirements..."
+        ):
+
+            report = pipeline.skill_gap_analysis()
+
+        st.subheader(
+            "🎯 Skill Gap Report"
+        )
+
+        st.markdown(report) 
+
+
+        #roadmap generator 
+          
+    roadmap_goal = st.text_input(
+    "🎯 Career Goal",
+    placeholder="Amazon SDE / ML Engineer / Google SWE..."
+)
+
+    if st.button("🛣 Generate Roadmap"):
+
+     if pipeline.vectorstore is None:
+
+        st.warning(
+            "Please upload documents first."
+        )
+
+     elif roadmap_goal == "":
+
+        st.warning(
+            "Enter a career goal."
+        )
+
+     else:
+
+        with st.spinner(
+            "Generating roadmap..."
+        ):
+
+            report = pipeline.roadmap(
+                roadmap_goal
+            )
+
+        st.subheader(
+            "🛣 Personalized Roadmap"
+        )
+
+        st.markdown(report)
+
+
     # Clear Chat
     if st.button("🗑 Clear Chat"):
 
