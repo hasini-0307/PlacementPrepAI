@@ -7,6 +7,11 @@ from src.ats_analyzer import analyze_resume
 from src.skill_gap_analyzer import analyze_skill_gap
 from src.roadmap_generator import generate_roadmap
 from src.interview_generator import generate_interview
+from src.interview_agent import (
+    start_interview,
+    evaluate_and_continue
+)
+from src.reranker import Reranker
 
 class RAGPipeline:
 
@@ -19,6 +24,7 @@ class RAGPipeline:
         self.llm = None
         self.parser = None
         self.chat_history = get_chat_history()
+        self.reranker = Reranker()
 
 
     def load_documents(self, pdf_paths):
@@ -95,6 +101,49 @@ class RAGPipeline:
     )
     
 
+    def start_interview(self, role):
+
+     docs = self.retriever.invoke(
+        "Provide complete information about the candidate."
+    )
+
+     context = "\n\n".join(
+        doc.page_content
+        for doc in docs
+    )
+
+     return start_interview(
+        context,
+        role
+    )
+
+
+    def continue_interview(
+        self,
+        role,
+        question,
+        answer,
+        history
+):
+
+     history_text = ""
+
+     for item in history:
+
+        history_text += (
+            f"Question: {item['question']}\n"
+            f"Answer: {item['answer']}\n\n"
+        )
+
+     result = evaluate_and_continue(
+        role,
+        question,
+        answer,
+        history_text
+    )
+
+     return result
+
 
     def ask(self, question):
 
@@ -105,6 +154,11 @@ class RAGPipeline:
             ]), []
 
         docs = self.retriever.invoke(question)
+        docs = self.reranker.rerank(
+            question,
+            docs,
+            top_k=5
+)
         print("\nRetrieved docs:", len(docs))
 
       

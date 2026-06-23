@@ -11,7 +11,7 @@ def get_retriever(vectorstore, chunks):
     vector_retriever = vectorstore.as_retriever(
         search_type="mmr",
         search_kwargs={
-            "k": 5
+            "k": 20
         }
     )
 

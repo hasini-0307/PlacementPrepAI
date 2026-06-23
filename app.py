@@ -1,9 +1,13 @@
-
 import os
 import shutil
 import streamlit as st
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, AIMessage
+from src.interview_state import get_interview_state
+from src.pdf_generator import create_pdf
+
+if "interview_state" not in st.session_state:
+    st.session_state.interview_state = get_interview_state()
 
 from src.rag_pipeline import RAGPipeline
 
@@ -14,18 +18,16 @@ load_dotenv()
 if "pipeline" not in st.session_state:
     st.session_state.pipeline = RAGPipeline()
 
-pipeline = st.session_state.pipeline
+
+
+pipeline = st.session_state["pipeline"]
 
 # Initialize chat history
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # Page config
-st.set_page_config(
-    page_title="PlacementPrep AI",
-    page_icon="🤖",
-    layout="wide"
-)
+st.set_page_config(page_title="PlacementPrep AI", page_icon="🤖", layout="wide")
 
 # Sidebar
 with st.sidebar:
@@ -74,9 +76,7 @@ Ask questions about your uploaded documents using:
 
     # Upload PDFs
     uploaded_files = st.file_uploader(
-        "📂 Upload PDF(s)",
-        type=["pdf"],
-        accept_multiple_files=True
+        "📂 Upload PDF(s)", type=["pdf"], accept_multiple_files=True
     )
 
     # Process PDFs
@@ -92,10 +92,7 @@ Ask questions about your uploaded documents using:
 
                 for file in uploaded_files:
 
-                    save_path = os.path.join(
-                        "uploads",
-                        file.name
-                    )
+                    save_path = os.path.join("uploads", file.name)
 
                     with open(save_path, "wb") as f:
                         f.write(file.getbuffer())
@@ -111,131 +108,93 @@ Ask questions about your uploaded documents using:
 
     st.markdown("---")
 
-
-    #ats score analyzer
+    # ats score analyzer
     if st.button("📊 ATS Analysis"):
 
-     if pipeline.vectorstore is None:
+        if pipeline.vectorstore is None:
 
-        st.warning(
-            "Please upload documents first."
-        )
+            st.warning("Please upload documents first.")
 
-     else:
+        else:
 
-        with st.spinner("Analyzing resume..."):
+            with st.spinner("Analyzing resume..."):
 
-            report = pipeline.ats_analysis()
+                report = pipeline.ats_analysis()
+                
+            
+            st.session_state["ats_report"] = report
 
-        st.subheader("📊 ATS Report")
-
-        st.markdown(report)
-
-
-     # skill gap analyzer 
+        # skill gap analyzer
     if st.button("🎯 Skill Gap Analysis"):
 
-     if pipeline.vectorstore is None:
+        if pipeline.vectorstore is None:
 
-        st.warning(
-            "Please upload documents first."
-        )
+            st.warning("Please upload documents first.")
 
-     else:
+        else:
 
-        with st.spinner(
-            "Analyzing candidate and job requirements..."
-        ):
+            with st.spinner("Analyzing candidate and job requirements..."):
 
-            report = pipeline.skill_gap_analysis()
+                report = pipeline.skill_gap_analysis()
+               
 
-        st.subheader(
-            "🎯 Skill Gap Report"
-        )
+            st.session_state["skill_gap_report"] = report
 
-        st.markdown(report) 
+            # roadmap generator
 
-
-        #roadmap generator 
-          
     roadmap_goal = st.text_input(
-    "🎯 Career Goal",
-    placeholder="Amazon SDE / ML Engineer / Google SWE..."
-)
+        "🎯 Career Goal", placeholder="Amazon SDE / ML Engineer / Google SWE..."
+    )
 
     if st.button("🛣 Generate Roadmap"):
 
-     if pipeline.vectorstore is None:
+        if pipeline.vectorstore is None:
 
-        st.warning(
-            "Please upload documents first."
-        )
+            st.warning("Please upload documents first.")
 
-     elif roadmap_goal == "":
+        elif roadmap_goal == "":
 
-        st.warning(
-            "Enter a career goal."
-        )
+            st.warning("Enter a career goal.")
 
-     else:
+        else:
 
-        with st.spinner(
-            "Generating roadmap..."
-        ):
+            with st.spinner("Generating roadmap..."):
 
-            report = pipeline.roadmap(
-                roadmap_goal
-            )
+                report = pipeline.roadmap(roadmap_goal)
 
-        st.subheader(
-            "🛣 Personalized Roadmap"
-        )
+            st.session_state["roadmap_report"] = report
 
-        st.markdown(report)
+    # Dynamic Interview
+    st.markdown("---")
+    st.subheader("🎤 Dynamic Interview")
 
-        #interviw questions generator
+    interview_role = st.text_input("Target Role", placeholder="Amazon SDE")
+
+    if st.button("🎤 Start Interview"):
+
+        if pipeline.vectorstore is None:
+
+            st.warning("Please upload documents first.")
+
+        elif interview_role == "":
+
+            st.warning("Please enter a role.")
+
+        else:
+
+            question = pipeline.start_interview(interview_role)
+
+            st.session_state.interview_state["active"] = True
+            st.session_state.interview_state["role"] = interview_role
+           
+            st.session_state.interview_state["current_question"] = question
+            st.session_state.interview_state["history"] = []
+
+            st.rerun()
 
     st.markdown("---")
 
-    st.subheader("🎤 Mock Interview")
-
-    interview_role = st.text_input(
-    "Target Role",
-    placeholder="Amazon SDE / ML Engineer / Google SWE"
-)
-
-    if st.button("🎤 Generate Interview"):
-
-     if pipeline.vectorstore is None:
-
-        st.warning(
-            "Please upload documents first."
-        )
-
-     elif interview_role == "":
-
-        st.warning(
-            "Please enter a role."
-        )
-
-     else:
-
-        with st.spinner(
-            "Generating interview questions..."
-        ):
-
-            report = pipeline.interview_questions(
-                interview_role
-            )
-
-        st.subheader(
-            "🎤 Mock Interview"
-        )
-
-        st.markdown(report)    
-
-
-    # Clear Chat
+    # Clear chat
     if st.button("🗑 Clear Chat"):
 
         st.session_state.messages = []
@@ -244,107 +203,260 @@ Ask questions about your uploaded documents using:
 
         st.rerun()
 
-    # Reset Session
+
+    # Reset session
     if st.button("🔄 Reset Session"):
 
         st.session_state.pipeline = RAGPipeline()
-
         st.session_state.messages = []
+        st.session_state.interview_state = get_interview_state()
+
+        st.session_state.pop("ats_report", None)
+        st.session_state.pop("skill_gap_report", None)
+        st.session_state.pop("roadmap_report", None)
 
         st.rerun()
 
-    # Delete Everything
+
+    # Delete everything
     if st.button("❌ Delete Everything"):
 
         st.session_state.pipeline = RAGPipeline()
-
         st.session_state.messages = []
+        st.session_state.interview_state = get_interview_state()
 
         if os.path.exists("uploads"):
             shutil.rmtree("uploads")
 
-        st.success("All documents and chat history deleted.")
+        if os.path.exists("chroma_db"):
+            shutil.rmtree("chroma_db")
+
+
+        st.success("All documents deleted.")
 
         st.rerun()
 
-
+   
+         
 # Main title
 st.title("🤖 PlacementPrep AI")
 
-st.caption(
-    "Chat with your documents using RAG + Groq + Llama 3.3 70B"
+st.caption("Chat with your documents using RAG + Groq + Llama 3.3 70B")
+
+tab1, tab2, tab3, tab4, tab5 = st.tabs(
+[
+    "💬 Chat",
+    "🎤 Interview",
+    "📊 ATS",
+    "🎯 Skill Gap",
+    "🛣 Roadmap"
+]
 )
 
-# Display previous messages
-for message in st.session_state.messages:
+with tab3:
 
-    with st.chat_message(message["role"]):
+    st.subheader("📊 ATS Report")
+    st.caption("Analyze resume quality and ATS compatibility")
 
-        st.markdown(message["content"])
+    if "ats_report" in st.session_state:
 
-
-# Chat input
-user_input = st.chat_input(
-    "Ask anything about your documents..."
-)
-
-if user_input:
-
-    # Check if documents are loaded
-    if pipeline.vectorstore is None:
-
-        st.warning(
-            "Please upload and process PDF documents first."
+        st.markdown(
+        st.session_state["ats_report"]
+    ) 
+        
+        pdf = create_pdf(
+            "ATS Report",
+            st.session_state["ats_report"]
         )
 
-        st.stop()
-
-    # Save user message
-    st.session_state.messages.append(
-        {
-            "role": "user",
-            "content": user_input
-        }
-    )
-
-    # Display user message
-    with st.chat_message("user"):
-
-        st.markdown(user_input)
-
-    # Assistant response
-    with st.chat_message("assistant"):
-
-        response, pages = pipeline.ask(user_input)
-
-        answer = st.write_stream(
-            chunk.content
-            for chunk in response
+        st.download_button(
+            "⬇ Download PDF",
+            data=pdf,
+            file_name="ATS_Report.pdf",
+            mime="application/pdf",
+            key="ats_pdf"
         )
 
-        # Store memory
-        pipeline.chat_history.add_message(
-            HumanMessage(content=user_input)
+
+
+    else:
+
+        st.info("Run ATS Analysis from sidebar.")
+
+
+with tab4:
+
+    st.subheader("🎯 Skill Gap Report")
+
+    if "skill_gap_report" in st.session_state:
+
+        st.markdown(
+            st.session_state["skill_gap_report"]
         )
 
-        pipeline.chat_history.add_message(
-            AIMessage(content=answer)
+        pdf = create_pdf(
+            "Skill Gap Report",
+            st.session_state["skill_gap_report"]
         )
 
-        # Show sources
-        if pages:
+        st.download_button(
+            "⬇ Download PDF",
+            data=pdf,
+            file_name="Skill_Gap_Report.pdf",
+            mime="application/pdf",
+            key="skill_gap_pdf"
+        )
 
-            with st.expander("📚 Sources"):
+    else:
 
-                for page in pages:
+        st.info(
+            "Run Skill Gap Analysis from sidebar."
+        )
 
-                    st.write(f"Page {page}")
+with tab5:
 
-    # Save assistant response
-    st.session_state.messages.append(
-        {
-            "role": "assistant",
-            "content": answer
-        }
-    )
+    st.subheader("🛣 Personalized Roadmap")
 
+    if "roadmap_report" in st.session_state:
+
+        st.markdown(
+            st.session_state["roadmap_report"]
+        )
+
+        pdf = create_pdf(
+            "Roadmap",
+            st.session_state["roadmap_report"]
+        )
+
+        st.download_button(
+            "⬇ Download PDF",
+            data=pdf,
+            file_name="Roadmap.pdf",
+            mime="application/pdf",
+            key="roadmap_pdf"
+        )
+
+    else:
+
+        st.info(
+            "Generate roadmap from sidebar."
+        )
+
+
+with tab2:
+
+
+    if st.session_state.interview_state["active"]:
+
+        st.markdown("---")
+        st.subheader("🎤 Live Interview")
+
+        # Previous rounds
+        for item in st.session_state.interview_state["history"]:
+
+            st.markdown("### Question")
+            st.info(item["question"])
+
+            st.markdown("### Your Answer")
+            st.write(item["answer"])
+
+            st.markdown("### Feedback")
+            st.success(item["feedback"])
+
+            st.markdown("---")
+
+        # Current question
+        current_question = st.session_state.interview_state["current_question"]
+
+        st.markdown("### Current Question")
+        st.info(current_question)
+        if st.button("🛑 End Interview"):
+
+            st.session_state.interview_state = get_interview_state()
+
+            st.rerun()
+
+        interview_answer = st.text_area(
+            "Your Answer",
+            key=f"interview_answer_{len(st.session_state.interview_state['history'])}",
+        )
+
+        if st.button("Submit Answer"):
+
+            
+            result = pipeline.continue_interview(
+                st.session_state.interview_state["role"],
+                current_question,
+                interview_answer,
+                st.session_state.interview_state["history"],
+            )
+
+            st.session_state.interview_state["history"].append(
+                {
+                    "question": current_question,
+                    "answer": interview_answer,
+                    "feedback": result["feedback"],
+                }
+            )
+
+            st.session_state.interview_state["current_question"] = result["next_question"]
+
+            st.rerun()
+    else:    
+        st.info("Start an interview from the sidebar.")  
+
+
+with tab1:
+    st.subheader("💬 Chat Assistant")
+    # Display previous messages
+    for message in st.session_state.messages:
+
+        with st.chat_message(message["role"]):
+
+            st.markdown(message["content"])
+    # Chat input
+    user_input = st.chat_input("Ask anything about your documents...")
+
+    if user_input:
+
+        # Check if documents are loaded
+        if pipeline.vectorstore is None:
+
+            st.warning("Please upload and process PDF documents first.")
+
+            st.stop()
+
+        # Save user message
+        st.session_state.messages.append({"role": "user", "content": user_input})
+       
+
+
+
+        # Display user message
+        with st.chat_message("user"):
+
+            st.markdown(user_input)
+
+        # Assistant response
+        with st.chat_message("assistant"):
+
+            response, pages = pipeline.ask(user_input)
+
+            answer = st.write_stream(chunk.content for chunk in response)
+
+            # Store memory
+            pipeline.chat_history.add_message(HumanMessage(content=user_input))
+
+            pipeline.chat_history.add_message(AIMessage(content=answer))
+
+            # Show sources
+            if pages:
+
+                with st.expander("📚 Sources"):
+
+                    for page in pages:
+
+                        st.write(f"Page {page}")
+
+        # Save assistant response
+        st.session_state.messages.append({"role": "assistant", "content": answer})
