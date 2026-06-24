@@ -12,6 +12,7 @@ from src.interview_agent import (
     evaluate_and_continue
 )
 from src.reranker import Reranker
+from src.context_guard import has_sufficient_context
 
 class RAGPipeline:
 
@@ -25,6 +26,8 @@ class RAGPipeline:
         self.parser = None
         self.chat_history = get_chat_history()
         self.reranker = Reranker()
+        self.memory_window = 8
+        recent_messages = self.chat_history.messages[-self.memory_window:]
 
 
     def load_documents(self, pdf_paths):
@@ -149,16 +152,37 @@ class RAGPipeline:
 
         if self.vectorstore is None:
 
-            return iter([
+            return iter(
                 "Please upload and process PDF documents first."
-            ]), []
+            , [],{})
 
         docs = self.retriever.invoke(question)
-        docs = self.reranker.rerank(
+        docs, scores = self.reranker.rerank(
             question,
             docs,
             top_k=5
-)
+)       
+        
+        print("\nScores:")
+        print(scores)
+
+        avg_score = sum(scores)/len(scores)
+
+        print("Average score:", avg_score)
+        print("Max score:", max(scores))
+        if len(scores) == 0:
+
+            return (
+        "I couldn't find enough information in the uploaded documents.",
+        [],{}
+    )
+
+        # Hallucination guard disabled temporarily
+        if not has_sufficient_context(docs):
+            return (
+            "I couldn't find enough information in the uploaded documents.",
+            [],{}
+         )
         print("\nRetrieved docs:", len(docs))
 
       
@@ -168,9 +192,12 @@ class RAGPipeline:
             for doc in docs
         )
 
+        
+        recent_messages = self.chat_history.messages[-self.memory_window:]
+
         history = "\n".join(
-         f"{msg.type}: {msg.content}"
-         for msg in self.chat_history.messages
+            f"{msg.type}: {msg.content}"
+            for msg in recent_messages
 )
 
         messages = self.prompt.invoke(
@@ -187,9 +214,9 @@ class RAGPipeline:
 
         except Exception:
 
-            return iter([
+            return iter(
                 "⚠️ LLM unavailable or rate limit exceeded. Please try again later."
-            ]), []
+            , [],{})
 
         pages = sorted(
             set(
@@ -197,5 +224,14 @@ class RAGPipeline:
                 for doc in docs
             )
         )
+        avg_score = sum(scores) / len(scores)
+        metadata = {
+        "num_chunks": len(docs),
+        "avg_score": avg_score,
+        "max_score": max(scores),
+        "pages": pages,
+        "retrieval": "Hybrid + MultiQuery",
+        "reranker": "CrossEncoder"
+}
 
-        return response, pages
+        return response, pages, metadata

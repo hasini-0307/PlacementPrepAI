@@ -440,9 +440,32 @@ with tab1:
         # Assistant response
         with st.chat_message("assistant"):
 
-            response, pages = pipeline.ask(user_input)
+            response, pages, metadata = pipeline.ask(user_input)
 
-            answer = st.write_stream(chunk.content for chunk in response)
+        if isinstance(response, str):
+
+            answer = response
+            st.markdown(answer)
+
+        else:
+
+            if isinstance(response, str):
+                answer = response
+                st.write(answer)
+            else:
+                answer = st.write_stream(
+                    chunk.content for chunk in response
+                )
+            score = metadata["max_score"]
+
+            if score > -6.5:
+                confidence = "🟢 High"
+
+            elif score > -11:
+                confidence = "🟡 Medium"
+
+            else:
+                confidence = "🔴 Low"
 
             # Store memory
             pipeline.chat_history.add_message(HumanMessage(content=user_input))
@@ -450,13 +473,33 @@ with tab1:
             pipeline.chat_history.add_message(AIMessage(content=answer))
 
             # Show sources
-            if pages:
+            with st.expander("📚 Sources & Retrieval Info"):
 
-                with st.expander("📚 Sources"):
+                st.markdown(
+                    f"**Confidence:** {confidence}"
+                )
 
-                    for page in pages:
+                st.markdown(
+                    f"**Max Score:** {metadata['max_score']:.2f}"
+                )
+                st.markdown(
+                    f"**Chunks Retrieved:** {metadata['num_chunks']}"
+                )
 
-                        st.write(f"Page {page}")
+                st.markdown(
+                    f"**Pages Used:** {', '.join(map(str, metadata['pages']))}"
+                )
 
-        # Save assistant response
+                st.markdown(
+                    f"**Retrieval:** {metadata['retrieval']}"
+                )
+
+                st.markdown(
+                    f"**Re-ranking:** {metadata['reranker']}"
+                )
+
+                st.markdown(
+                    f"**Average Relevance Score:** {metadata['avg_score']:.2f}"
+                )
+                        # Save assistant response
         st.session_state.messages.append({"role": "assistant", "content": answer})

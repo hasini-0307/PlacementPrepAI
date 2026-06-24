@@ -32,7 +32,14 @@ class Reranker:
             reverse=True
         )
 
-        return [
-            doc
-            for doc, score in scored_docs[:top_k]
-        ]
+        top_docs = [
+    doc
+    for doc, score in scored_docs[:top_k]
+]
+
+        top_scores = [
+    float(score)
+    for doc, score in scored_docs[:top_k]
+]
+
+        return top_docs, top_scores
