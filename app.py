@@ -9,11 +9,15 @@ from src.pdf_generator import create_pdf
 if "interview_state" not in st.session_state:
     st.session_state.interview_state = get_interview_state()
 
-from src.rag_pipeline import RAGPipeline
+
 
 # Load environment variables
 load_dotenv()
 
+
+
+
+from src.rag_pipeline import RAGPipeline
 # Initialize pipeline once
 if "pipeline" not in st.session_state:
     st.session_state.pipeline = RAGPipeline()

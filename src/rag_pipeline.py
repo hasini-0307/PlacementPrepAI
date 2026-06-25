@@ -13,7 +13,7 @@ from src.interview_agent import (
 )
 from src.reranker import Reranker
 from src.context_guard import has_sufficient_context
-
+from src.langfuse_client import langfuse
 class RAGPipeline:
 
     def __init__(self):
@@ -150,88 +150,150 @@ class RAGPipeline:
 
     def ask(self, question):
 
-        if self.vectorstore is None:
+        with langfuse.start_as_current_observation(
+            name=f"Q: {question[:50]}",
+            input={
+                "question": question
+            },
+            metadata={
+                "project": "PlacementPrepAI",
+                "retrieval": "Hybrid+MultiQuery",
+                "reranker": "CrossEncoder"
+            }
+        ) as query_obs:   
 
-            return iter(
-                "Please upload and process PDF documents first."
-            , [],{})
+            if self.vectorstore is None:
 
-        docs = self.retriever.invoke(question)
-        docs, scores = self.reranker.rerank(
-            question,
-            docs,
-            top_k=5
-)       
-        
-        print("\nScores:")
-        print(scores)
+                return iter(
+                    "Please upload and process PDF documents first."
+                , [],{})
 
-        avg_score = sum(scores)/len(scores)
+            with langfuse.start_as_current_observation(
+                name="retrieval"
+            ) as retrieval_obs:
 
-        print("Average score:", avg_score)
-        print("Max score:", max(scores))
-        if len(scores) == 0:
+                docs = self.retriever.invoke(question)
 
-            return (
-        "I couldn't find enough information in the uploaded documents.",
-        [],{}
-    )
+                retrieval_obs.update(
+                    output={
+                        "chunks_retrieved": len(docs)
+                    }
+                )
+                
 
-        # Hallucination guard disabled temporarily
-        if not has_sufficient_context(docs):
-            return (
+
+            with langfuse.start_as_current_observation(
+                name="reranking"
+            ) as rerank_obs:
+
+                docs, scores = self.reranker.rerank(
+                    question,
+                    docs,
+                    top_k=5
+                )
+
+                avg_score = round(
+                    sum(scores) / len(scores),
+                    2
+                )
+
+                rerank_obs.update(
+                    output={
+                        "avg_score": avg_score,
+                        "max_score": round(max(scores), 2),
+                        "scores": [round(s, 2) for s in scores]
+                    }
+                )
+
+                   
+            
+            print("\nScores:")
+            print(scores)
+
+            avg_score = sum(scores)/len(scores)
+
+            print("Average score:", avg_score)
+            print("Max score:", max(scores))
+            if len(scores) == 0:
+
+                return (
             "I couldn't find enough information in the uploaded documents.",
             [],{}
-         )
-        print("\nRetrieved docs:", len(docs))
-
-      
-
-        context = "\n\n".join(
-            doc.page_content
-            for doc in docs
         )
 
+            # Hallucination guard disabled temporarily
+            if not has_sufficient_context(docs):
+                return (
+                "I couldn't find enough information in the uploaded documents.",
+                [],{}
+            )
+            print("\nRetrieved docs:", len(docs))
+
         
-        recent_messages = self.chat_history.messages[-self.memory_window:]
 
-        history = "\n".join(
-            f"{msg.type}: {msg.content}"
-            for msg in recent_messages
-)
+            context = "\n\n".join(
+                doc.page_content
+                for doc in docs
+            )
 
-        messages = self.prompt.invoke(
-            {
-                "history": history,
-                "context": context,
-                "question": question
+            
+            recent_messages = self.chat_history.messages[-self.memory_window:]
+
+            history = "\n".join(
+                f"{msg.type}: {msg.content}"
+                for msg in recent_messages
+    )
+
+            messages = self.prompt.invoke(
+                {
+                    "history": history,
+                    "context": context,
+                    "question": question
+                }
+            )
+
+            try:
+
+                with langfuse.start_as_current_observation(
+                    name="generation"
+                ):
+
+                    response = self.llm.stream(messages)
+
+            except Exception:
+
+                return iter(
+                    "⚠️ LLM unavailable or rate limit exceeded. Please try again later."
+                , [],{})
+
+            pages = sorted(
+                set(
+                    doc.metadata["page"] + 1
+                    for doc in docs
+                )
+            )
+            avg_score = round(
+            sum(scores) / len(scores),
+            2
+        )
+            metadata = {
+            "num_chunks": len(docs),
+            "avg_score": avg_score,
+            "max_score": max(scores),
+            "pages": pages,
+            "retrieval": "Hybrid + MultiQuery",
+            "reranker": "CrossEncoder"
+    }
+            
+            
+            query_obs.update(
+            output={
+                "pages": pages,
+                "num_chunks": len(docs),
+                "avg_score": avg_score
             }
         )
 
-        try:
 
-            response = self.llm.stream(messages)
-
-        except Exception:
-
-            return iter(
-                "⚠️ LLM unavailable or rate limit exceeded. Please try again later."
-            , [],{})
-
-        pages = sorted(
-            set(
-                doc.metadata["page"] + 1
-                for doc in docs
-            )
-        )
-        avg_score = sum(scores) / len(scores)
-        metadata = {
-        "num_chunks": len(docs),
-        "avg_score": avg_score,
-        "max_score": max(scores),
-        "pages": pages,
-        "retrieval": "Hybrid + MultiQuery",
-        "reranker": "CrossEncoder"
-}
-
-        return response, pages, metadata
+            langfuse.flush()
+            return response, pages, metadata
