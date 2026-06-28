@@ -6,6 +6,7 @@ from langchain_core.messages import AIMessage
 from src.ats_analyzer import analyze_resume
 from src.skill_gap_analyzer import analyze_skill_gap
 from src.roadmap_generator import generate_roadmap
+from collections import OrderedDict
 from src.interview_generator import generate_interview
 from src.interview_agent import (
     start_interview,
@@ -14,6 +15,7 @@ from src.interview_agent import (
 from src.reranker import Reranker
 from src.context_guard import has_sufficient_context
 from src.langfuse_client import langfuse
+import re
 class RAGPipeline:
 
     def __init__(self):
@@ -28,6 +30,19 @@ class RAGPipeline:
         self.reranker = Reranker()
         self.memory_window = 8
         recent_messages = self.chat_history.messages[-self.memory_window:]
+        self.retrieval_cache = OrderedDict()
+        self.max_cache_size = 100
+
+    def normalize_question(self, question):
+
+        question = question.lower()
+
+        question = re.sub(r"[^\w\s]", "", question)
+
+        question = " ".join(question.split())
+
+        return question
+                
 
 
     def load_documents(self, pdf_paths):
@@ -172,13 +187,39 @@ class RAGPipeline:
                 name="retrieval"
             ) as retrieval_obs:
 
-                docs = self.retriever.invoke(question)
+                cache_key = self.normalize_question(question)
+               
 
-                retrieval_obs.update(
-                    output={
-                        "chunks_retrieved": len(docs)
-                    }
-                )
+                if cache_key in self.retrieval_cache:
+
+                    docs = self.retrieval_cache[cache_key]
+
+                    # Move this entry to the end (most recently used)
+                    self.retrieval_cache.move_to_end(cache_key)
+
+                    cache_hit = True
+
+                else:
+
+                    docs = self.retriever.invoke(question)
+
+                    self.retrieval_cache[cache_key] = docs
+
+                    # Remove the oldest item if cache exceeds limit
+                    if len(self.retrieval_cache) > self.max_cache_size:
+
+                        oldest_key, _ = self.retrieval_cache.popitem(last=False)
+
+                        print(f"🗑️ Evicted cache entry: {oldest_key}")
+
+                    cache_hit = False
+
+                retrieval_obs.create_event(
+                name="cache_status",
+                input={
+                    "status": "HIT" if cache_hit else "MISS"
+                }
+            )
                 
 
 
