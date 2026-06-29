@@ -15,6 +15,7 @@ from src.interview_agent import (
 from src.reranker import Reranker
 from src.context_guard import has_sufficient_context
 from src.langfuse_client import langfuse
+from src.logger import logger
 import re
 class RAGPipeline:
 
@@ -57,49 +58,115 @@ class RAGPipeline:
         )
 
     def ats_analysis(self):
-     
+
+        logger.info("ATS analysis started")
+
+        try:
+
+            docs = self.retriever.invoke(
+                "Provide complete information about the candidate."
+            )
+
+            logger.info(
+                "Retrieved %d documents for ATS analysis",
+                len(docs)
+            )
+
+            context = "\n\n".join(
+                doc.page_content
+                for doc in docs
+            )
+
+            result = analyze_resume(context)
+
+            logger.info("ATS analysis completed successfully")
+
+            return result
+
+        except Exception:
+
+            logger.exception("ATS analysis failed")
+
+            raise
+
     
-
-     docs = self.retriever.invoke(
-        "Provide complete information about the candidate."
-    )
-
-     context = "\n\n".join(
-        doc.page_content
-        for doc in docs
-    )
-
-     return analyze_resume(context)
     
     def skill_gap_analysis(self):
 
-     docs = self.retriever.invoke(
-        "Provide complete information about the candidate and job requirements."
-    )
+        logger.info("Skill Gap Analysis started")
 
-     context = "\n\n".join(
-        doc.page_content
-        for doc in docs
-    )
+        try:
 
-     return analyze_skill_gap(context)
+            docs = self.retriever.invoke(
+                "Provide complete information about the candidate and job requirements."
+            )
+
+            logger.info(
+                "Retrieved %d documents for Skill Gap Analysis",
+                len(docs)
+            )
+
+            context = "\n\n".join(
+                doc.page_content
+                for doc in docs
+            )
+
+            result = analyze_skill_gap(context)
+
+            logger.info("Skill Gap Analysis completed successfully")
+
+            return result
+
+        except Exception:
+
+            logger.exception("Skill Gap Analysis failed")
+
+            raise
     
 
     def roadmap(self, goal):
 
-     docs = self.retriever.invoke(
-        "Provide complete information about the candidate."
-    )
+        logger.info(
+            "Roadmap generation started | Goal: %s",
+            goal
+        )
 
-     context = "\n\n".join(
-        doc.page_content
-        for doc in docs
-    )
+        try:
 
-     return generate_roadmap(
-        context,
-        goal
-    )
+            docs = self.retriever.invoke(
+                "Provide complete information about the candidate."
+            )
+
+            logger.info(
+                "Retrieved %d documents for Roadmap Generation",
+                len(docs)
+            )
+
+            context = "\n\n".join(
+                doc.page_content
+                for doc in docs
+            )
+
+            result = generate_roadmap(
+                context,
+                goal
+            )
+
+            logger.info(
+                "Roadmap generated successfully | Goal: %s",
+                goal
+            )
+
+            return result
+
+        except Exception:
+
+            logger.exception(
+                "Roadmap generation failed | Goal: %s",
+                goal
+            )
+
+            raise
 
 
     def interview_questions(self, role):
@@ -121,19 +188,31 @@ class RAGPipeline:
 
     def start_interview(self, role):
 
-     docs = self.retriever.invoke(
-        "Provide complete information about the candidate."
-    )
+        logger.info(
+            "Interview started | Role: %s",
+            role
+        )
 
-     context = "\n\n".join(
-        doc.page_content
-        for doc in docs
-    )
+        docs = self.retriever.invoke(
+            "Provide complete information about the candidate."
+        )
 
-     return start_interview(
-        context,
-        role
-    )
+        context = "\n\n".join(
+            doc.page_content
+            for doc in docs
+        )
+
+        result = start_interview(
+            context,
+            role
+        )
+
+        logger.info(
+            "Interview initialized successfully | Role: %s",
+            role
+        )
+
+        return result
 
 
     def continue_interview(
@@ -143,6 +222,9 @@ class RAGPipeline:
         answer,
         history
 ):
+     logger.info(
+    "Evaluating interview response"
+)
 
      history_text = ""
 
@@ -159,7 +241,9 @@ class RAGPipeline:
         answer,
         history_text
     )
-
+     logger.info(
+        "Interview response evaluated successfully"
+    )
      return result
 
 
@@ -198,6 +282,7 @@ class RAGPipeline:
                     self.retrieval_cache.move_to_end(cache_key)
 
                     cache_hit = True
+                    logger.info("Retrieval Cache HIT")
 
                 else:
 
@@ -213,6 +298,7 @@ class RAGPipeline:
                         print(f"🗑️ Evicted cache entry: {oldest_key}")
 
                     cache_hit = False
+                    logger.info("Retrieval Cache MISS")
 
                 retrieval_obs.create_event(
                 name="cache_status",
@@ -248,13 +334,15 @@ class RAGPipeline:
 
                    
             
-            print("\nScores:")
-            print(scores)
+            avg_score = sum(scores) / len(scores)
 
-            avg_score = sum(scores)/len(scores)
+            logger.info(
+                "Reranking completed | Avg Score: %.2f | Max Score: %.2f",
+                avg_score,
+                max(scores)
+            )
 
-            print("Average score:", avg_score)
-            print("Max score:", max(scores))
+            logger.debug("Scores: %s", scores)
             if len(scores) == 0:
 
                 return (
@@ -268,7 +356,10 @@ class RAGPipeline:
                 "I couldn't find enough information in the uploaded documents.",
                 [],{}
             )
-            print("\nRetrieved docs:", len(docs))
+            logger.info(
+                "Retrieved %d documents",
+                len(docs)
+            )
 
         
 
@@ -295,17 +386,27 @@ class RAGPipeline:
 
             try:
 
+                logger.info("LLM generation started")
+
                 with langfuse.start_as_current_observation(
                     name="generation"
                 ):
 
                     response = self.llm.stream(messages)
 
-            except Exception:
+                logger.info("LLM generation initialized successfully")
 
-                return iter(
-                    "⚠️ LLM unavailable or rate limit exceeded. Please try again later."
-                , [],{})
+            except Exception as e:
+
+                logger.exception("LLM generation failed")
+
+                return (
+                    iter(
+                        "⚠️ LLM unavailable or rate limit exceeded. Please try again later."
+                    ),
+                    [],
+                    {}
+                )
 
             pages = sorted(
                 set(

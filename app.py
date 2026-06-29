@@ -3,6 +3,7 @@ import shutil
 import streamlit as st
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, AIMessage
+from src.logger import logger
 from src.interview_state import get_interview_state
 from src.pdf_generator import create_pdf
 
@@ -16,6 +17,9 @@ load_dotenv()
 
 
 
+logger.info("=" * 60)
+logger.info("PlacementPrepAI Started")
+logger.info("=" * 60)
 
 from src.rag_pipeline import RAGPipeline
 # Initialize pipeline once
@@ -25,6 +29,7 @@ if "pipeline" not in st.session_state:
 
 
 pipeline = st.session_state["pipeline"]
+logger.info("RAG Pipeline initialized")
 
 # Initialize chat history
 if "messages" not in st.session_state:
@@ -104,6 +109,10 @@ Ask questions about your uploaded documents using:
                     pdf_paths.append(save_path)
 
                 pipeline.load_documents(pdf_paths)
+                logger.info(
+                "Processed %d uploaded PDF(s)",
+                len(uploaded_files)
+            )
 
             st.success("Documents processed successfully!")
 
@@ -444,7 +453,13 @@ with tab1:
         # Assistant response
         with st.chat_message("assistant"):
 
+            logger.info(
+            "New Question: %s",
+            user_input
+        )
+
             response, pages, metadata = pipeline.ask(user_input)
+            logger.info("Response generated successfully")
 
         if isinstance(response, str):
 
