@@ -9,10 +9,7 @@ def get_retriever(vectorstore, chunks):
 
     # Vector retriever
     vector_retriever = vectorstore.as_retriever(
-        search_type="mmr",
-        search_kwargs={
-            "k": 20
-        }
+        search_type="mmr", search_kwargs={"k": 20}
     )
 
     # BM25 retriever
@@ -20,22 +17,12 @@ def get_retriever(vectorstore, chunks):
 
     # Hybrid retriever
     hybrid_retriever = EnsembleRetriever(
-        retrievers=[
-            vector_retriever,
-            bm25_retriever
-        ],
-        weights=[
-            0.7,
-            0.3
-        ]
+        retrievers=[vector_retriever, bm25_retriever], weights=[0.7, 0.3]
     )
 
     # MultiQuery on top of hybrid retrieval
     llm = get_llm()
 
-    retriever = MultiQueryRetriever.from_llm(
-        retriever=hybrid_retriever,
-        llm=llm
-    )
+    retriever = MultiQueryRetriever.from_llm(retriever=hybrid_retriever, llm=llm)
 
     return retriever

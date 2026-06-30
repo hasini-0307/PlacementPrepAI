@@ -8,7 +8,6 @@ os.makedirs("logs", exist_ok=True)
 logger = logging.getLogger("PlacementPrepAI")
 
 
-
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
 logger.setLevel(getattr(logging, LOG_LEVEL))
@@ -17,8 +16,7 @@ logger.setLevel(getattr(logging, LOG_LEVEL))
 if not logger.handlers:
 
     formatter = logging.Formatter(
-        "%(asctime)s | %(levelname)-8s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
+        "%(asctime)s | %(levelname)-8s | %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
     )
 
     # Log to terminal
@@ -26,11 +24,11 @@ if not logger.handlers:
     console_handler.setFormatter(formatter)
 
     file_handler = RotatingFileHandler(
-    "logs/placementprep.log",
-    maxBytes=5 * 1024 * 1024,
-    backupCount=5,
-    encoding="utf-8"
-)
+        "logs/placementprep.log",
+        maxBytes=5 * 1024 * 1024,
+        backupCount=5,
+        encoding="utf-8",
+    )
     file_handler.setFormatter(formatter)
 
     logger.addHandler(console_handler)

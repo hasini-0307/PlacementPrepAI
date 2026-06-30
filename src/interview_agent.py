@@ -31,12 +31,7 @@ Rules:
     return response.content.strip()
 
 
-def evaluate_and_continue(
-        role,
-        previous_question,
-        answer,
-        history
-):
+def evaluate_and_continue(role, previous_question, answer, history):
 
     llm = get_llm()
 
@@ -110,39 +105,25 @@ Next Question:
 
     # -------- Extract Next Question --------
 
-    match = re.search(
-        r"Next Question:\s*(.*)",
-        text,
-        flags=re.DOTALL | re.IGNORECASE
-    )
+    match = re.search(r"Next Question:\s*(.*)", text, flags=re.DOTALL | re.IGNORECASE)
 
     if match:
 
         next_question = match.group(1).strip()
 
         feedback = re.sub(
-            r"Next Question:.*",
-            "",
-            text,
-            flags=re.DOTALL | re.IGNORECASE
+            r"Next Question:.*", "", text, flags=re.DOTALL | re.IGNORECASE
         ).strip()
 
     else:
 
         feedback = text
 
-        next_question = (
-            "Can you describe a challenging project you worked on and explain how you solved the problems you faced?"
-        )
+        next_question = "Can you describe a challenging project you worked on and explain how you solved the problems you faced?"
 
     # Prevent empty next question
     if len(next_question) < 5:
 
-        next_question = (
-            "Can you explain one technical challenge you faced in a project and how you solved it?"
-        )
+        next_question = "Can you explain one technical challenge you faced in a project and how you solved it?"
 
-    return {
-        "feedback": feedback,
-        "next_question": next_question
-    }   
+    return {"feedback": feedback, "next_question": next_question}

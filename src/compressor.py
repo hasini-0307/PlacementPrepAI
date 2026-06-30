@@ -7,9 +7,6 @@ def get_compressor():
 
     embeddings = get_embedding_model()
 
-    compressor = EmbeddingsFilter(
-        embeddings=embeddings,
-        similarity_threshold=0.5
-    )
+    compressor = EmbeddingsFilter(embeddings=embeddings, similarity_threshold=0.5)
 
     return compressor

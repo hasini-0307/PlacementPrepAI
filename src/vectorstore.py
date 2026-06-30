@@ -7,9 +7,6 @@ def create_vectorstore(chunks):
 
     embeddings = get_embedding_model()
 
-    vectorstore = Chroma.from_documents(
-        documents=chunks,
-        embedding=embeddings
-    )
+    vectorstore = Chroma.from_documents(documents=chunks, embedding=embeddings)
 
     return vectorstore

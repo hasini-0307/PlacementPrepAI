@@ -29,12 +29,7 @@ while True:
     context = "\n\n".join(doc.page_content for doc in docs)
 
     # Build prompt
-    messages = prompt.invoke(
-        {
-            "context": context,
-            "question": query
-        }
-    )
+    messages = prompt.invoke({"context": context, "question": query})
 
     # Gemini response
     response = llm.invoke(messages)
@@ -46,9 +41,7 @@ while True:
     print(answer)
 
     # Show source pages
-    pages = sorted(
-        set(doc.metadata["page"] + 1 for doc in docs)
-    )
+    pages = sorted(set(doc.metadata["page"] + 1 for doc in docs))
 
     print("\nSources:")
     for page in pages:

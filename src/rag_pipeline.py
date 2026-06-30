@@ -8,15 +8,14 @@ from src.skill_gap_analyzer import analyze_skill_gap
 from src.roadmap_generator import generate_roadmap
 from collections import OrderedDict
 from src.interview_generator import generate_interview
-from src.interview_agent import (
-    start_interview,
-    evaluate_and_continue
-)
+from src.interview_agent import start_interview, evaluate_and_continue
 from src.reranker import Reranker
 from src.context_guard import has_sufficient_context
 from src.langfuse_client import langfuse
 from src.logger import logger
 import re
+
+
 class RAGPipeline:
 
     def __init__(self):
@@ -30,7 +29,7 @@ class RAGPipeline:
         self.chat_history = get_chat_history()
         self.reranker = Reranker()
         self.memory_window = 8
-        recent_messages = self.chat_history.messages[-self.memory_window:]
+        recent_messages = self.chat_history.messages[-self.memory_window :]
         self.retrieval_cache = OrderedDict()
         self.max_cache_size = 100
 
@@ -43,8 +42,6 @@ class RAGPipeline:
         question = " ".join(question.split())
 
         return question
-                
-
 
     def load_documents(self, pdf_paths):
 
@@ -53,8 +50,7 @@ class RAGPipeline:
 
         self.vectorstore, self.chunks = process_documents(pdf_paths)
         self.retriever, self.prompt, self.llm, self.parser = create_chain(
-            self.vectorstore,
-            self.chunks
+            self.vectorstore, self.chunks
         )
 
     def ats_analysis(self):
@@ -67,15 +63,9 @@ class RAGPipeline:
                 "Provide complete information about the candidate."
             )
 
-            logger.info(
-                "Retrieved %d documents for ATS analysis",
-                len(docs)
-            )
+            logger.info("Retrieved %d documents for ATS analysis", len(docs))
 
-            context = "\n\n".join(
-                doc.page_content
-                for doc in docs
-            )
+            context = "\n\n".join(doc.page_content for doc in docs)
 
             result = analyze_resume(context)
 
@@ -89,8 +79,6 @@ class RAGPipeline:
 
             raise
 
-    
-    
     def skill_gap_analysis(self):
 
         logger.info("Skill Gap Analysis started")
@@ -101,15 +89,9 @@ class RAGPipeline:
                 "Provide complete information about the candidate and job requirements."
             )
 
-            logger.info(
-                "Retrieved %d documents for Skill Gap Analysis",
-                len(docs)
-            )
+            logger.info("Retrieved %d documents for Skill Gap Analysis", len(docs))
 
-            context = "\n\n".join(
-                doc.page_content
-                for doc in docs
-            )
+            context = "\n\n".join(doc.page_content for doc in docs)
 
             result = analyze_skill_gap(context)
 
@@ -122,14 +104,10 @@ class RAGPipeline:
             logger.exception("Skill Gap Analysis failed")
 
             raise
-    
 
     def roadmap(self, goal):
 
-        logger.info(
-            "Roadmap generation started | Goal: %s",
-            goal
-        )
+        logger.info("Roadmap generation started | Goal: %s", goal)
 
         try:
 
@@ -137,142 +115,84 @@ class RAGPipeline:
                 "Provide complete information about the candidate."
             )
 
-            logger.info(
-                "Retrieved %d documents for Roadmap Generation",
-                len(docs)
-            )
+            logger.info("Retrieved %d documents for Roadmap Generation", len(docs))
 
-            context = "\n\n".join(
-                doc.page_content
-                for doc in docs
-            )
+            context = "\n\n".join(doc.page_content for doc in docs)
 
-            result = generate_roadmap(
-                context,
-                goal
-            )
+            result = generate_roadmap(context, goal)
 
-            logger.info(
-                "Roadmap generated successfully | Goal: %s",
-                goal
-            )
+            logger.info("Roadmap generated successfully | Goal: %s", goal)
 
             return result
 
         except Exception:
 
-            logger.exception(
-                "Roadmap generation failed | Goal: %s",
-                goal
-            )
+            logger.exception("Roadmap generation failed | Goal: %s", goal)
 
             raise
 
-
     def interview_questions(self, role):
-
-     docs = self.retriever.invoke(
-        "Provide complete information about the candidate."
-    )
-
-     context = "\n\n".join(
-        doc.page_content
-        for doc in docs
-    )
-
-     return generate_interview(
-        context,
-        role
-    )
-    
-
-    def start_interview(self, role):
-
-        logger.info(
-            "Interview started | Role: %s",
-            role
-        )
 
         docs = self.retriever.invoke(
             "Provide complete information about the candidate."
         )
 
-        context = "\n\n".join(
-            doc.page_content
-            for doc in docs
+        context = "\n\n".join(doc.page_content for doc in docs)
+
+        return generate_interview(context, role)
+
+    def start_interview(self, role):
+
+        logger.info("Interview started | Role: %s", role)
+
+        docs = self.retriever.invoke(
+            "Provide complete information about the candidate."
         )
 
-        result = start_interview(
-            context,
-            role
-        )
+        context = "\n\n".join(doc.page_content for doc in docs)
 
-        logger.info(
-            "Interview initialized successfully | Role: %s",
-            role
-        )
+        result = start_interview(context, role)
+
+        logger.info("Interview initialized successfully | Role: %s", role)
 
         return result
 
+    def continue_interview(self, role, question, answer, history):
+        logger.info("Evaluating interview response")
 
-    def continue_interview(
-        self,
-        role,
-        question,
-        answer,
-        history
-):
-     logger.info(
-    "Evaluating interview response"
-)
+        history_text = ""
 
-     history_text = ""
+        for item in history:
 
-     for item in history:
+            history_text += (
+                f"Question: {item['question']}\n" f"Answer: {item['answer']}\n\n"
+            )
 
-        history_text += (
-            f"Question: {item['question']}\n"
-            f"Answer: {item['answer']}\n\n"
-        )
-
-     result = evaluate_and_continue(
-        role,
-        question,
-        answer,
-        history_text
-    )
-     logger.info(
-        "Interview response evaluated successfully"
-    )
-     return result
-
+        result = evaluate_and_continue(role, question, answer, history_text)
+        logger.info("Interview response evaluated successfully")
+        return result
 
     def ask(self, question):
 
         with langfuse.start_as_current_observation(
             name=f"Q: {question[:50]}",
-            input={
-                "question": question
-            },
+            input={"question": question},
             metadata={
                 "project": "PlacementPrepAI",
                 "retrieval": "Hybrid+MultiQuery",
-                "reranker": "CrossEncoder"
-            }
-        ) as query_obs:   
+                "reranker": "CrossEncoder",
+            },
+        ) as query_obs:
 
             if self.vectorstore is None:
 
-                return iter(
-                    "Please upload and process PDF documents first."
-                , [],{})
+                return iter("Please upload and process PDF documents first.", [], {})
 
             with langfuse.start_as_current_observation(
                 name="retrieval"
             ) as retrieval_obs:
 
                 cache_key = self.normalize_question(question)
-               
 
                 if cache_key in self.retrieval_cache:
 
@@ -301,96 +221,65 @@ class RAGPipeline:
                     logger.info("Retrieval Cache MISS")
 
                 retrieval_obs.create_event(
-                name="cache_status",
-                input={
-                    "status": "HIT" if cache_hit else "MISS"
-                }
-            )
-                
-
-
-            with langfuse.start_as_current_observation(
-                name="reranking"
-            ) as rerank_obs:
-
-                docs, scores = self.reranker.rerank(
-                    question,
-                    docs,
-                    top_k=5
+                    name="cache_status",
+                    input={"status": "HIT" if cache_hit else "MISS"},
                 )
 
-                avg_score = round(
-                    sum(scores) / len(scores),
-                    2
-                )
+            with langfuse.start_as_current_observation(name="reranking") as rerank_obs:
+
+                docs, scores = self.reranker.rerank(question, docs, top_k=5)
+
+                avg_score = round(sum(scores) / len(scores), 2)
 
                 rerank_obs.update(
                     output={
                         "avg_score": avg_score,
                         "max_score": round(max(scores), 2),
-                        "scores": [round(s, 2) for s in scores]
+                        "scores": [round(s, 2) for s in scores],
                     }
                 )
 
-                   
-            
             avg_score = sum(scores) / len(scores)
 
             logger.info(
                 "Reranking completed | Avg Score: %.2f | Max Score: %.2f",
                 avg_score,
-                max(scores)
+                max(scores),
             )
 
             logger.debug("Scores: %s", scores)
             if len(scores) == 0:
 
                 return (
-            "I couldn't find enough information in the uploaded documents.",
-            [],{}
-        )
+                    "I couldn't find enough information in the uploaded documents.",
+                    [],
+                    {},
+                )
 
             # Hallucination guard disabled temporarily
             if not has_sufficient_context(docs):
                 return (
-                "I couldn't find enough information in the uploaded documents.",
-                [],{}
-            )
-            logger.info(
-                "Retrieved %d documents",
-                len(docs)
-            )
+                    "I couldn't find enough information in the uploaded documents.",
+                    [],
+                    {},
+                )
+            logger.info("Retrieved %d documents", len(docs))
 
-        
+            context = "\n\n".join(doc.page_content for doc in docs)
 
-            context = "\n\n".join(
-                doc.page_content
-                for doc in docs
-            )
+            recent_messages = self.chat_history.messages[-self.memory_window :]
 
-            
-            recent_messages = self.chat_history.messages[-self.memory_window:]
-
-            history = "\n".join(
-                f"{msg.type}: {msg.content}"
-                for msg in recent_messages
-    )
+            history = "\n".join(f"{msg.type}: {msg.content}" for msg in recent_messages)
 
             messages = self.prompt.invoke(
-                {
-                    "history": history,
-                    "context": context,
-                    "question": question
-                }
+                {"history": history, "context": context, "question": question}
             )
 
             try:
 
                 logger.info("LLM generation started")
 
-                with langfuse.start_as_current_observation(
-                    name="generation"
-                ):
+                with langfuse.start_as_current_observation(name="generation"):
 
                     response = self.llm.stream(messages)
 
@@ -405,37 +294,23 @@ class RAGPipeline:
                         "⚠️ LLM unavailable or rate limit exceeded. Please try again later."
                     ),
                     [],
-                    {}
+                    {},
                 )
 
-            pages = sorted(
-                set(
-                    doc.metadata["page"] + 1
-                    for doc in docs
-                )
-            )
-            avg_score = round(
-            sum(scores) / len(scores),
-            2
-        )
+            pages = sorted(set(doc.metadata["page"] + 1 for doc in docs))
+            avg_score = round(sum(scores) / len(scores), 2)
             metadata = {
-            "num_chunks": len(docs),
-            "avg_score": avg_score,
-            "max_score": max(scores),
-            "pages": pages,
-            "retrieval": "Hybrid + MultiQuery",
-            "reranker": "CrossEncoder"
-    }
-            
-            
-            query_obs.update(
-            output={
-                "pages": pages,
                 "num_chunks": len(docs),
-                "avg_score": avg_score
+                "avg_score": avg_score,
+                "max_score": max(scores),
+                "pages": pages,
+                "retrieval": "Hybrid + MultiQuery",
+                "reranker": "CrossEncoder",
             }
-        )
 
+            query_obs.update(
+                output={"pages": pages, "num_chunks": len(docs), "avg_score": avg_score}
+            )
 
             langfuse.flush()
             return response, pages, metadata

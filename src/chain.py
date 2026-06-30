@@ -5,16 +5,15 @@ from langchain_core.output_parsers import StrOutputParser
 from src.retriever import get_retriever
 
 
-def create_chain(vectorstore,chunks):
+def create_chain(vectorstore, chunks):
 
-    retriever = get_retriever(vectorstore,chunks)
+    retriever = get_retriever(vectorstore, chunks)
 
     from src.llm import get_llm
 
     llm = get_llm()
 
-    prompt = ChatPromptTemplate.from_template(
-"""
+    prompt = ChatPromptTemplate.from_template("""
 You are PlacementPrep AI, an expert resume reviewer and career coach.
 
 Use the provided context to answer questions.
@@ -50,9 +49,7 @@ Question:
 {question}
 
 Answer:
-"""
-)
-
+""")
 
     parser = StrOutputParser()
 
