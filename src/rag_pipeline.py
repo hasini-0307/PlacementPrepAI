@@ -14,7 +14,7 @@ from src.context_guard import has_sufficient_context
 from src.langfuse_client import langfuse
 from src.logger import logger
 import re
-
+from src.utils import normalize_question
 
 class RAGPipeline:
 
@@ -33,15 +33,7 @@ class RAGPipeline:
         self.retrieval_cache = OrderedDict()
         self.max_cache_size = 100
 
-    def normalize_question(self, question):
-
-        question = question.lower()
-
-        question = re.sub(r"[^\w\s]", "", question)
-
-        question = " ".join(question.split())
-
-        return question
+    
 
     def load_documents(self, pdf_paths):
 
@@ -192,7 +184,7 @@ class RAGPipeline:
                 name="retrieval"
             ) as retrieval_obs:
 
-                cache_key = self.normalize_question(question)
+                cache_key = normalize_question(question)
 
                 if cache_key in self.retrieval_cache:
 

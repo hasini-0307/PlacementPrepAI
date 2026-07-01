@@ -41,3 +41,11 @@ jobs:
       - name: Check Code Formatting
         run: |
           black --check .    
+
+      - name: Run Unit Tests
+        run: |
+          pytest   
+
+      - name: Build Docker Image
+        run: |
+          docker build -t placementprepai:ci .     
