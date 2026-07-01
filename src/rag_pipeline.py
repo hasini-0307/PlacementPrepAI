@@ -16,6 +16,7 @@ from src.logger import logger
 import re
 from src.utils import normalize_question
 
+
 class RAGPipeline:
 
     def __init__(self):
@@ -32,8 +33,6 @@ class RAGPipeline:
         recent_messages = self.chat_history.messages[-self.memory_window :]
         self.retrieval_cache = OrderedDict()
         self.max_cache_size = 100
-
-    
 
     def load_documents(self, pdf_paths):
 
